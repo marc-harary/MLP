@@ -28,23 +28,27 @@ class NN:
 
 
     def ReLUPrime(self, z):
-        """ derivative of ReLU function """
+        """ derivative of ReLU activation function """
         return 0 if z < 0 else 1
 
 
     def sigmoidPrime(self, z):
+        """ derivative of sigmoid activation function """
         return self.sigmoid(z)*(1-self.sigmoid(z))
 
 
     def sigmoid(self, z):
+        """ sigmoid activation function """
         return (1+np.exp(-z))**-1
 
 
     def ReLU(self, z):
+        """ ReLU activation function """
         return np.clip(z, a_min=0, a_max=None)
 
 
     def forward_propagate(self, X):
+        """ propagates tensor forwards through network """
         assert(X.shape[0] == (self.Ws[0].shape[0]))
         self.Zs = []
         self.As = []
@@ -71,6 +75,8 @@ class NN:
 
     
     def back_propagate(self, Y):
+        """ gets gradients for each layers given forward propagation
+            has already occurred """
         m = self.Ws[0].shape[1]
         self.dZs = [self.As[-1] - Y]
         self.dWs = [self.dZs[0] @ self.As[-2].T]
