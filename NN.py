@@ -8,7 +8,7 @@ class NN:
         assert(len(layers) >= 2)
         assert(all(map(lambda x: x == "ReLU" or x == "sigmoid",
                        activations)))
-                       
+
         self.activations = activations
         self.bs = [np.zeros((layer,1)) for layer in layers]
         self.Ws = []
@@ -28,6 +28,7 @@ class NN:
 
 
     def ReLUPrime(self, z):
+        """ derivative of ReLU function """
         return 0 if z < 0 else 1
 
 
