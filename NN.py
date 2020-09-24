@@ -3,14 +3,15 @@ import numpy as np
 class NN:
     """ implements fully-connected feed-forward neural network """
 
-
     def __init__(self, layers, activations):
         assert(len(layers) >= 2)
         assert(all(map(lambda x: x == "ReLU" or x == "sigmoid",
                        activations)))
 
         self.activations = activations
+        # zero initialization for bias vectors
         self.bs = [np.zeros((layer,1)) for layer in layers]
+        # Xavier initialization for weight vectors
         self.Ws = []
         for i in range(1,len(layers)):
             shape = (layers[i-1], layers[i])
@@ -18,10 +19,11 @@ class NN:
 
     
     def XC(self, Y, lambd):
-        """ returns cross-entropy loss """
+        """ returns cross-entropy loss with regularization """
         m = self.Ws[0].shape[1]
         A = self.As[-1]
         loss = -np.mean(Y*np.log(A) + (1-Y)*np.log(1-A))
+        # calculate regularization term
         regular = [np.square(W).sum() for W in self.Ws]
         regular = lambd/(2*m) * sum(regular)
         return loss + regular
@@ -53,6 +55,7 @@ class NN:
         self.Zs = []
         self.As = []
 
+        # calculate activation for first layer
         Z1 = self.Ws[0].T @ X
         if self.activations[0] == "ReLU":
             A1 = self.ReLU(Z1)
@@ -61,15 +64,17 @@ class NN:
         self.Zs.append(Z1)
         self.As.append(A1)
         
-        for i in range(1,len(self.Ws)):
-            W = self.Ws[i]
+        # calculate activations for subsequent layers
+        for i in range(1, len(self.Ws)):
+            curW = self.Ws[i]
             preA = self.As[i-1]
-            curZ = W.T @ preA
-            activation = self.activations[i]
-            if activation == "ReLU":
+            curZ = curW.T @ preA
+
+            if self.activations[i] == "ReLU":
                 curA = self.ReLU(curZ)
             else:
                 curA = self.sigmoid(curZ)
+
             self.Zs.append(curZ)
             self.As.append(curA)
 
@@ -78,11 +83,13 @@ class NN:
         """ gets gradients for each layers given forward propagation
             has already occurred """
         m = self.Ws[0].shape[1]
-        self.dZs = [self.As[-1] - Y]
-        self.dWs = [self.dZs[0] @ self.As[-2].T]
+        # calculate backprop for last layer
+        self.dZs = [ self.As[-1] - Y ]
+        self.dWs = [ self.dZs[0] @ self.As[-2].T ]
         self.dbs = (1/m) * np.sum(self.dZs[0], axis=1, keepdims=True)
 
-        for i in range(1, len(self.layers)):
+        # calculate backprop for subsequent layers
+        for i in range(1, len(self.Ws)):
             preW = self.Ws[-i]
             preZ = self.Zs[-i]
             preDZ = self.dZs[-i]
@@ -91,5 +98,5 @@ class NN:
                 curDZ = preW.T @ preDZ * self.ReLUPrime(curZ)
             else:
                 curDZ = preW.T @ preDZ * self.sigmoidPrime(curZ)
-            curDw = (1/m)*dZ
+            curDw = (1/m)*curdZ
             self.dZs.append(curDZ)
