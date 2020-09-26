@@ -6,6 +6,7 @@ class NN:
     """ implements fully-connected feed-forward neural network """
 
     def __init__(self, layers, activations):
+        # check for matching input dimensions
         assert(len(layers) >= 2)
         assert(all(map(lambda x: x == "ReLU" or x == "sigmoid",
                        activations)))
@@ -23,7 +24,7 @@ class NN:
             self.Ws.append(.01*np.random.randn(*shape))
 
     
-    def XC(self, Y, lambd):
+    def cross_entropy_loss(self, Y, lambd):
         """ returns cross-entropy loss with regularization """
         m = self.Ws[0].shape[1]
         A = self.As[-1]
@@ -91,12 +92,12 @@ class NN:
             has already occurred """
         m = self.Ws[0].shape[1]
         
-        self.deltas = self.dAs = self.dZs = self.dWs =\
-            self.dbs = self.L * [None]
+        self.deltas = self.dAs = self.dWs = self.dbs = self.L * [None]
     
         # calculate backprop for last layer
         self.dAs[self.L-1] = self.As[self.L-1] - Y
         if self.activations[self.L-1] == "ReLU":
+            # apply proper g'(.)
             self.deltas[self.L-1] = self.dAs[self.L-1] *\
                 self.ReLUPrime(self.Zs[self.L-1])
         else:
