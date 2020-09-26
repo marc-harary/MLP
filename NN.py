@@ -34,6 +34,12 @@ class NN:
         return loss + regular
 
 
+    def evaluate(self, X, Y):
+        """ evaluates F1 score of model given inputs and ground
+            truths """
+        pass
+
+
     def ReLUPrime(self, z):
         """ derivative of ReLU activation function """
         return 0 if z < 0 else 1
