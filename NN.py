@@ -12,19 +12,22 @@ class NN:
         assert(len(ns) == len(acts))
 
         self.L = len(ns)
-        self.deltas = self.dWs = self.dbs = self.L * [None]
         self.acts = acts
-        self.bs = [np.zeros((n,1)) for n in ns[1:]] # 0 initialization
-        self.Zs = (self.L-1) * [None]
-        self.As = self.L * [None]
-        self.Ws = [] # Xavier initialization for weight vectors
-        for i in range(1,len(ns)):
-            self.Ws.append( .01 * np.random.randn(ns[i-1],ns[i]) )
+        self.deltas = self.L * [None]
+        self.dWs    = self.L * [None]
+        self.dbs    = self.L * [None]
+        self.As     = self.L * [None]
+        self.Zs     = self.L * [None]
+        self.bs     = self.L * [None] # 0 initialization
+        self.Ws     = self.L * [None] # Xavier initialization
+        for i in range(1, self.L):
+            self.Ws[i] = .01 * np.random.randn(ns[i-1], ns[i])
+            self.bs[i] = np.zeros((ns[i],1))
         
 
     def cross_entropy_loss(self, Y, lambd):
         """ returns cross-entropy loss with regularization """
-        m = self.Ws[0].shape[1]
+        m = self.Ws[1].shape[1]
         A = self.As[-1]
         loss = -np.mean(Y*np.log(A) + (1-Y)*np.log(1-A)) # w/out reg
         regular = [np.square(W).sum() for W in self.Ws] # reg term
@@ -58,11 +61,12 @@ class NN:
 
     def forward_propagate(self, X):
         """ propagates tensor forwards through network """
-        assert(X.shape[0] == (self.Ws[0].shape[0]))
+        assert(X.shape[0] == self.Ws[1].shape[0])
         self.As[0] = X
-        for i in range(self.L-1):
-            self.Zs[i] = self.Ws[i].T @ self.As[i] + self.bs[i]
-            self.As[i+1] = self.g(self.acts[i], self.Zs[i])
+        for i in range(1, self.L):
+            self.Zs[i] = self.Ws[i].T @ self.As[i-1] + self.bs[i]
+            self.As[i] = self.g(self.acts[i], self.Zs[i])
+        return self.As[-1]
 
 
     def back_propagate(self, Y):
