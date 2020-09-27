@@ -11,15 +11,17 @@ class NN:
         assert(all(map(lambda act: act in ["ReLU","sigmoid"], acts)))
         assert(len(ns) == len(acts))
 
-        self.acts = acts
         self.L = len(ns)
+        self.deltas = self.dWs = self.dbs = self.L * [None]
+        self.acts = acts
         self.bs = [np.zeros((n,1)) for n in ns[1:]] # 0 initialization
+        self.Zs = (self.L-1) * [None]
+        self.As = self.L * [None]
         self.Ws = [] # Xavier initialization for weight vectors
         for i in range(1,len(ns)):
-            shape = (ns[i-1], ns[i])
-            self.Ws.append(.01*np.random.randn(*shape))
+            self.Ws.append( .01 * np.random.randn(ns[i-1],ns[i]) )
+        
 
-    
     def cross_entropy_loss(self, Y, lambd):
         """ returns cross-entropy loss with regularization """
         m = self.Ws[0].shape[1]
@@ -57,34 +59,18 @@ class NN:
     def forward_propagate(self, X):
         """ propagates tensor forwards through network """
         assert(X.shape[0] == (self.Ws[0].shape[0]))
-        self.Zs = []
-        self.As = [X]
+        self.As[0] = X
+        for i in range(self.L-1):
+            self.Zs[i] = self.Ws[i].T @ self.As[i] + self.bs[i]
+            self.As[i+1] = self.g(self.acts[i], self.Zs[i])
 
-        # calculate activation for first layer
-        Z1 = self.Ws[0].T @ X
-        A1 = self.g(self.acts[0], Z1)
-        self.Zs.append(Z1)
-        self.As.append(A1)
-        
-        # calculate acts for subsequent layers
-        for i in range(1, len(self.Ws)):
-            Z = self.Ws[i].T @ self.As[i] + self.bs[i]
-            A = self.g(self.acts[i], Z)
-            self.Zs.append(Z)
-            self.As.append(A)
 
-        return self.As[-1]
-
-    
     def back_propagate(self, Y):
         """ gets gradients for each layers given forward propagation
             has already occurred """
-        self.deltas = self.dWs = self.dbs = self.L * [None]
-    
         # calculate delta for last layer
         dA = self.As[-1] - Y # dC/dAl
         self.deltas[-1] = dA * self.gPrime(self.acts[-1], self.Zs[-1])
-
         # calculate backprop for subsequent layers
         for l in range(self.L-2, 0, -1):
             self.deltas[l] = self.Ws[l] @ self.deltas[l+1]
