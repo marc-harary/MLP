@@ -8,16 +8,13 @@ class NN:
     def __init__(self, ns, acts):
         # check for matching input dimensions
         assert(len(ns) >= 2)
-        assert(all(map(lambda x: x == "ReLU" or x == "sigmoid",acts)))
+        assert(all(map(lambda act: act in ["ReLU","sigmoid"], acts)))
         assert(len(ns) == len(acts))
 
         self.acts = acts
         self.L = len(ns)
-
-        # zero initialization for bias vectors
-        self.bs = [np.zeros((n,1)) for n in ns]
-        # Xavier initialization for weight vectors
-        self.Ws = []
+        self.bs = [np.zeros((n,1)) for n in ns[1:]] # 0 initialization
+        self.Ws = [] # Xavier initialization for weight vectors
         for i in range(1,len(ns)):
             shape = (ns[i-1], ns[i])
             self.Ws.append(.01*np.random.randn(*shape))
@@ -27,9 +24,8 @@ class NN:
         """ returns cross-entropy loss with regularization """
         m = self.Ws[0].shape[1]
         A = self.As[-1]
-        loss = -np.mean(Y*np.log(A) + (1-Y)*np.log(1-A))
-        # calculate regularization term
-        regular = [np.square(W).sum() for W in self.Ws]
+        loss = -np.mean(Y*np.log(A) + (1-Y)*np.log(1-A)) # w/out reg
+        regular = [np.square(W).sum() for W in self.Ws] # reg term
         regular = lambd/(2*m) * sum(regular)
         return loss + regular
 
@@ -39,16 +35,23 @@ class NN:
             truths """
         pass
 
-    def gPrime(self, func, z):
-        if func == "ReLU":
+
+    def gPrime(self, act, z):
+        """ implements derivatives of  various activation functions,
+            specified by kwarg ACT """
+        if act == "ReLU":
             return 0 if z < 0 else 1
-        return self.g("sigmoid",z) * (1-self.g("sigmoid",z))
+        elif act == "sigmoid":
+            return self.g("sigmoid",z) * (1-self.g("sigmoid",z))
 
 
-    def g(self, func, z):
-        if func == "ReLU":
+    def g(self, act, z):
+        """ implements various activation functions, specified by
+            kwarg ACT """
+        if act == "ReLU":
             return np.clip(z, a_min=0, a_max=None)
-        return (1+np.exp(-z))**-1
+        elif act == "sigmoid":
+            return (1+np.exp(-z))**-1
 
 
     def forward_propagate(self, X):
@@ -79,12 +82,12 @@ class NN:
         self.deltas = self.dWs = self.dbs = self.L * [None]
     
         # calculate delta for last layer
-        dA = self.As[self.L] - Y # dC/dAl
-        self.deltas[self.L] = dA * self.gPrime(self.acts[self.L],
-                                               self.Zs[self.L])
+        dA = self.As[-1] - Y # dC/dAl
+        self.deltas[-1] = dA * self.gPrime(self.acts[-1], self.Zs[-1])
 
         # calculate backprop for subsequent layers
-        for l in range(self.L-2, 1, -1):
-            # get proper deriative function
-            self.deltas[l] = self.Ws[l].T @ self.deltas[l+1] *\
-                self.gPrime(self.acts[l], self.Zs[l])
+        for l in range(self.L-2, 0, -1):
+            self.deltas[l] = self.Ws[l] @ self.deltas[l+1]
+            self.deltas[l] *= self.gPrime(self.acts[l], self.Zs[l])
+            self.dWs[l] = self.As[l] @ self.deltas[l+1]
+            self.dbs[l] = self.deltas[l+1]
