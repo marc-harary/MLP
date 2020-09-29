@@ -45,7 +45,7 @@ class NN:
         """ implements derivatives of  various activation functions,
             specified by kwarg ACT """
         if act == "ReLU":
-            return 0 if z < 0 else 1
+            return (z >= 0).astype(np.float64)
         elif act == "sigmoid":
             return self.g("sigmoid",z) * (1-self.g("sigmoid",z))
 
@@ -61,23 +61,52 @@ class NN:
 
     def forward_propagate(self, X):
         """ propagates tensor forwards through network """
+        # check dimensions of input matrix match those of input layer
         assert(X.shape[0] == self.Ws[1].shape[0])
+
+        # forward propagate and cache entire batch
         self.As[0] = X
         for i in range(1, self.L):
             self.Zs[i] = self.Ws[i].T @ self.As[i-1] + self.bs[i]
             self.As[i] = self.g(self.acts[i], self.Zs[i])
-        return self.As[-1]
+
+        # cache output for entire batch
+        output = self.As[-1]
+
+        # re-store average activations and weighted inputs
+        self.As[0] = np.mean(X, axis=1, keepdims=True)
+        for i in range(1, self.L):
+            self.As[i] = np.mean(self.As[i], axis=1, keepdims=True)
+            self.Zs[i] = np.mean(self.Zs[i], axis=1, keepdims=True)
+
+        return output
 
 
     def back_propagate(self, Y):
         """ gets gradients for each layers given forward propagation
             has already occurred """
-        # calculate delta for last layer
-        dA = self.As[-1] - Y # dC/dAl
+        # delta for last layer
+        dA = np.mean(self.As[-1] - Y, axis=1, keepdims=True) 
         self.deltas[-1] = dA * self.gPrime(self.acts[-1], self.Zs[-1])
-        # calculate backprop for subsequent layers
-        for l in range(self.L-2, 0, -1):
-            self.deltas[l] = self.Ws[l] @ self.deltas[l+1]
+        self.dWs[-1] = self.deltas[-1] @ self.As[-2].T
+        
+        # deltas for preceding layers
+        for l in range(self.L-2, 0, -1): 
+            self.deltas[l] = self.Ws[l+1] @ self.deltas[l+1]
             self.deltas[l] *= self.gPrime(self.acts[l], self.Zs[l])
-            self.dWs[l] = self.As[l] @ self.deltas[l+1]
-            self.dbs[l] = self.deltas[l+1]
+            self.dWs[l] = self.deltas[l] @ self.As[l-1].T
+            self.dbs[l]=np.sum(self.deltas[l+1],axis=1,keepdims=True)
+
+    
+    def fit(self, X, Y, epochs=10_000, alpha=1e-2):
+        for epoch in range(epochs):
+            self.forward_propagate(X)
+            self.back_propagate(Y)
+
+            for l in range(1, self.L):
+                self.Ws[l] -= alpha*self.dWs[l]
+                self.bs[l] -= alpha*self.bs[l]
+
+            loss = self.cross_entropy_loss(Y, lambd=0)
+            if epoch % 1000 == 0:
+                print("Loss for epoch {epoch} = {loss}"%(epoch,loss))
