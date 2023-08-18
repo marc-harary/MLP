@@ -1,2 +1,2 @@
-# nn
-Implementation of feed-forward fully connected neural network from scratch in Numpy.
+# MLP
+Implementation of feed-forward fully connected neural network from scratch in NumPy.
